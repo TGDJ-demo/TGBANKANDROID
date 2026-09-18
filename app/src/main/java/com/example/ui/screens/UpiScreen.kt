@@ -61,7 +61,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.TransactionType
+import com.example.ui.camera.InAppCameraScanner
 import com.example.ui.components.DemoBadge
+import com.example.ui.components.PaymentSecurityAuthDialog
 import com.example.ui.components.TransactionRowItem
 import com.example.ui.theme.BankBlueAccent
 import com.example.ui.theme.BankErrorRed
@@ -103,39 +105,36 @@ fun UpiScreen(
   val authMethod by viewModel.paymentAuthMethod.collectAsState()
   val authPassed by viewModel.authPassed.collectAsState()
   val ctx = LocalContext.current
-  var payRequested by remember { mutableStateOf(false) }
-  val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
-    if (bitmap != null) {
-      // Simulate QR scan result from captured image
-      viewModel.useDemoQrCode()
-      payRequested = true
-      // Trigger auth flow if required
-      if (testControls.requirePaymentAuth) {
-        if (authMethod.displayName.contains("Biometric", ignoreCase = true) && !testControls.mockBiometricSuccess) {
-          val activity = (ctx as? FragmentActivity)
-          if (activity != null && canAuthenticateBiometric(ctx)) {
-            showBiometricPrompt(
-              activity = activity,
-              title = "Authenticate to Pay",
-              subtitle = authMethod.displayName,
-              onSuccess = { viewModel.onAuthVerified() },
-              onError = { msg -> Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
-            )
-          } else {
-            viewModel.requestPaymentAuth()
-          }
-        } else {
-          viewModel.requestPaymentAuth()
-        }
-      } else {
-        viewModel.confirmUpiPayment()
-      }
-    }
-  }
-  val permissionLauncher = rememberLauncherForActivityResult(RequestPermission()) { granted: Boolean ->
-    if (granted) cameraLauncher.launch(null)
-  }
+  var showInAppScanner by remember { mutableStateOf(false) }
+  var showSecurityAuthDialog by remember { mutableStateOf(false) }
+  var pendingMerchant by remember { mutableStateOf<String?>(null) }
   val coroutineScope = rememberCoroutineScope()
+
+  if (showInAppScanner) {
+    InAppCameraScanner(
+      onQrScanned = { payload, merchant, amt ->
+        viewModel.updateUpiId("merchant@tg")
+        viewModel.updateUpiAmount(String.format(Locale.US, "%.2f", amt))
+        pendingMerchant = merchant
+        showInAppScanner = false
+        showSecurityAuthDialog = true
+      },
+      onClose = { showInAppScanner = false }
+    )
+    return
+  }
+
+  // Payment Security Multi-Factor Authentication Dialog
+  PaymentSecurityAuthDialog(
+    visible = showSecurityAuthDialog,
+    amount = amount.toDoubleOrNull() ?: 125.00,
+    recipientOrPurpose = pendingMerchant ?: if (upiId.isNotEmpty()) upiId else "TG Demo Merchant",
+    onAuthorized = {
+      showSecurityAuthDialog = false
+      viewModel.confirmUpiPayment(pendingMerchant)
+    },
+    onDismiss = { showSecurityAuthDialog = false }
+  )
 
   // If a UPI payment succeeded, show the UPI Success Screen
   if (successTx != null) {
@@ -458,28 +457,13 @@ fun UpiScreen(
 
                 Button(
                   onClick = {
-                    if (testControls.requirePaymentAuth && !authPassed) {
-                      payRequested = true
-                      // Use biometric prompt directly when selected
-                      if (authMethod.displayName.contains("Biometric", ignoreCase = true) && !testControls.mockBiometricSuccess) {
-                        val activity = (ctx as? FragmentActivity)
-                        if (activity != null && canAuthenticateBiometric(ctx)) {
-                          showBiometricPrompt(
-                            activity = activity,
-                            title = "Authenticate to Pay",
-                            subtitle = authMethod.displayName,
-                            onSuccess = { viewModel.onAuthVerified() },
-                            onError = { msg -> Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
-                          )
-                        } else {
-                          viewModel.requestPaymentAuth()
-                        }
-                      } else {
-                        viewModel.requestPaymentAuth()
-                      }
-                    } else {
-                      viewModel.confirmUpiPayment()
+                    val amt = amount.toDoubleOrNull()
+                    if (amt == null || amt <= 0.0) {
+                      Toast.makeText(ctx, "Please enter a valid amount", Toast.LENGTH_SHORT).show()
+                      return@Button
                     }
+                    pendingMerchant = null
+                    showSecurityAuthDialog = true
                   },
                   modifier = Modifier
                     .fillMaxWidth()
@@ -488,7 +472,7 @@ fun UpiScreen(
                   shape = RoundedCornerShape(12.dp),
                   colors = ButtonDefaults.buttonColors(containerColor = BankNavyPrimary)
                 ) {
-                  Text("Proceed to Pay", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                  Text("Authorize & Pay via UPI", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
               }
             }
@@ -550,34 +534,25 @@ fun UpiScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Open Camera Scanner
+                // Open Real Camera Scanner
                 Button(
                   onClick = {
-                    val hasCamera = ctx.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
-                    if (!hasCamera) {
-                      Toast.makeText(ctx, "No camera on device", Toast.LENGTH_SHORT).show()
-                      return@Button
-                    }
-                    val permissionState = ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA)
-                    if (permissionState == PackageManager.PERMISSION_GRANTED) {
-                      cameraLauncher.launch(null)
-                    } else {
-                      permissionLauncher.launch(Manifest.permission.CAMERA)
-                    }
+                    showInAppScanner = true
                   },
                   modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
                     .testTag("upi_open_camera_button"),
                   shape = RoundedCornerShape(12.dp),
-                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9333EA))
+                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
                 ) {
-                  Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+                  Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = Color.White)
                   Spacer(modifier = Modifier.width(8.dp))
                   Text(
-                    text = "Open Camera Scanner",
+                    text = "Open Real Phone Camera Scanner",
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                   )
                 }
 
@@ -631,7 +606,8 @@ fun UpiScreen(
                   .clickable {
                     viewModel.useDemoUpiId(id)
                     viewModel.updateUpiAmount("50.00")
-                    viewModel.setUpiTab(0)
+                    pendingMerchant = name
+                    showSecurityAuthDialog = true
                   }
                   .testTag("upi_contact_${name.replace(" ", "_")}"),
                 shape = RoundedCornerShape(12.dp),
@@ -697,13 +673,6 @@ fun UpiScreen(
           }
         }
       }
-    }
-  }
-  LaunchedEffect(authPassed) {
-    if (authPassed && payRequested) {
-      payRequested = false
-      // proceed with previously requested payment
-      viewModel.confirmUpiPayment()
     }
   }
 }

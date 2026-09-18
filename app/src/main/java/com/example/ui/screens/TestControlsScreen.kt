@@ -148,18 +148,7 @@ fun TestControlsScreen(
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    // Reset Demo Data Card
-    Card(
-      modifier = Modifier
-        .fillMaxWidth()
-        .testTag("reset_demo_data_card"),
-      shape = RoundedCornerShape(16.dp),
-      colors = CardDefaults.cardColors(containerColor = Color.White),
-      elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-      Column(modifier = Modifier.padding(18.dp)) {
-        
-    // ── New auth & seed controls ──
+    // Auth & Backend Controls Card
     Card(
       modifier = Modifier
         .fillMaxWidth()
@@ -169,7 +158,7 @@ fun TestControlsScreen(
       elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
       Column(modifier = Modifier.padding(18.dp)) {
-        Text("Auth & Backend Controls", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = BankNavyDark)
+        Text("Auth & Security Controls", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = BankNavyDark)
         Spacer(modifier = Modifier.height(10.dp))
         TestToggleRow(
           title = "Mock Biometric Success",
@@ -194,37 +183,41 @@ fun TestControlsScreen(
           onCheckedChange = { viewModel.updateTestControls(testControls.copy(forceOtpAlways = it)) },
           testTag = "toggle_force_otp"
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
         Button(
           onClick = { viewModel.pushDatabaseSeed() },
           modifier = Modifier
             .fillMaxWidth()
-            .height(46.dp)
+            .height(44.dp)
             .testTag("push_database_seed_button"),
           shape = RoundedCornerShape(10.dp),
           colors = ButtonDefaults.buttonColors(containerColor = BankBlueAccent)
         ) {
-          Text("Push / Seed Database to Backend", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+          Text("Push / Seed Database to Backend", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
         }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-          "Resets profile, beneficiaries, elite cards and transactions so Appium assertions validate against known seed data.",
-          fontSize = 11.sp,
-          color = BankTextSecondary
-        )
       }
     }
 
     Spacer(modifier = Modifier.height(16.dp))
 
-Row(verticalAlignment = Alignment.CenterVertically) {
+    // Comprehensive Reset Card
+    Card(
+      modifier = Modifier
+        .fillMaxWidth()
+        .testTag("reset_demo_data_card"),
+      shape = RoundedCornerShape(16.dp),
+      colors = CardDefaults.cardColors(containerColor = Color.White),
+      elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+      Column(modifier = Modifier.padding(18.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
           Icon(Icons.Default.Refresh, contentDescription = null, tint = BankNavyPrimary)
           Spacer(modifier = Modifier.width(8.dp))
-          Text("Reset Demo State", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = BankNavyDark)
+          Text("Comprehensive Demo Reset", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = BankNavyDark)
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-          text = "Restores initial demo balance ($24,588,338,510.70), default user profile, clean transactions, and default notifications.",
+          text = "Resets all activities: Balance ($24.5B), KYC verification flow, Credit/Debit utilization, cards, and transaction records.",
           fontSize = 12.sp,
           color = BankTextSecondary,
           lineHeight = 16.sp
@@ -241,9 +234,40 @@ Row(verticalAlignment = Alignment.CenterVertically) {
           shape = RoundedCornerShape(10.dp),
           colors = ButtonDefaults.buttonColors(containerColor = BankNavyDark)
         ) {
-          Icon(Icons.Default.Refresh, contentDescription = null)
+          Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White)
           Spacer(modifier = Modifier.width(8.dp))
-          Text("Reset Demo Data to Default", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+          Text("Reset Everything (Factory Demo State)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          Button(
+            onClick = { viewModel.resetKycOnly() },
+            modifier = Modifier
+              .weight(1f)
+              .height(40.dp)
+              .testTag("reset_kyc_only_button"),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFF6FF))
+          ) {
+            Text("Reset KYC Only", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = BankNavyDark)
+          }
+
+          Button(
+            onClick = { viewModel.resetCreditOnly() },
+            modifier = Modifier
+              .weight(1f)
+              .height(40.dp)
+              .testTag("reset_credit_only_button"),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFF6FF))
+          ) {
+            Text("Reset Credit Only", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = BankNavyDark)
+          }
         }
       }
     }

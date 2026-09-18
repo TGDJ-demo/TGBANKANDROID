@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.Transaction
 import com.example.ui.components.DemoBadge
+import com.example.ui.components.PaymentSecurityAuthDialog
 import com.example.ui.theme.BankBlueAccent
 import com.example.ui.theme.BankErrorRed
 import com.example.ui.theme.BankNavyDark
@@ -381,8 +382,26 @@ fun WithdrawScreen(
   var amountInput by remember { mutableStateOf("200") }
   var errorText by remember { mutableStateOf<String?>(null) }
   var successTx by remember { mutableStateOf<Transaction?>(null) }
+  var showSecurityAuthDialog by remember { mutableStateOf(false) }
 
   val methods = listOf("ATM", "Bank Transfer", "Debit Account")
+
+  PaymentSecurityAuthDialog(
+    visible = showSecurityAuthDialog,
+    amount = amountInput.toDoubleOrNull() ?: 200.0,
+    recipientOrPurpose = "Withdrawal via $selectedMethod",
+    onAuthorized = {
+      showSecurityAuthDialog = false
+      val amt = amountInput.toDoubleOrNull() ?: 200.0
+      val res = viewModel.executeWithdraw(amt, selectedMethod)
+      res.onSuccess { tx ->
+        successTx = tx
+      }.onFailure { err ->
+        errorText = err.message ?: "Withdrawal failed."
+      }
+    },
+    onDismiss = { showSecurityAuthDialog = false }
+  )
 
   Column(
     modifier = Modifier
@@ -620,12 +639,8 @@ fun WithdrawScreen(
               errorText = "Insufficient demo balance."
               return@Button
             }
-            val res = viewModel.executeWithdraw(amt, selectedMethod)
-            res.onSuccess { tx ->
-              successTx = tx
-            }.onFailure { err ->
-              errorText = err.message ?: "Withdrawal failed."
-            }
+            errorText = null
+            showSecurityAuthDialog = true
           },
           modifier = Modifier
             .fillMaxWidth()
@@ -634,7 +649,7 @@ fun WithdrawScreen(
           shape = RoundedCornerShape(12.dp),
           colors = ButtonDefaults.buttonColors(containerColor = BankNavyPrimary)
         ) {
-          Text("Withdraw Funds", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+          Text("Authorize & Withdraw Funds", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
         }
       }
     }

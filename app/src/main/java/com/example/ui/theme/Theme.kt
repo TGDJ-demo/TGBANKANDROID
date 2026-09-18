@@ -31,30 +31,32 @@ private val DarkColorScheme =
 
 private val LightColorScheme =
   lightColorScheme(
-    primary = BankNavyPrimary,
+    primary = BankNavyDark,
     onPrimary = Color.White,
-    primaryContainer = BankIceBlue,
-    onPrimaryContainer = BankNavyDark,
+    primaryContainer = BankNavyPrimary,
+    onPrimaryContainer = Color.White,
     secondary = BankBlueAccent,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFDBEAFE),
-    onSecondaryContainer = BankNavyPrimary,
+    secondaryContainer = Color(0xFFEFF6FF),
+    onSecondaryContainer = BankNavyDark,
     tertiary = BankSuccessGreen,
-    background = BankBackgroundLight,
-    surface = BankSurfaceLight,
+    onTertiary = Color.White,
+    background = Color(0xFFF8FAFC),
+    surface = Color.White,
     onBackground = BankTextPrimary,
     onSurface = BankTextPrimary,
-    surfaceVariant = BankSurfaceVariantLight,
+    surfaceVariant = Color(0xFFF1F5F9),
     onSurfaceVariant = BankTextSecondary,
-    outline = BankBorderLight,
+    outline = Color(0xFFE2E8F0),
     error = BankErrorRed,
+    onError = Color.White,
   )
 
 @Composable
 fun MyApplicationTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
-  // For standard banking app presentation, allow dynamic color on Android 12+
-  dynamicColor: Boolean = true,
+  // Dynamic color disabled to prevent system wallpaper from creating low-contrast black-on-blue artifacts
+  dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
 ) {
   val useDynamic = dynamicColor && Build.VERSION.SDK_INT >= 31

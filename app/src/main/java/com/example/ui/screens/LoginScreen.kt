@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -235,7 +236,41 @@ fun LoginScreen(
             )
           }
 
-          Spacer(modifier = Modifier.height(12.dp))
+          Spacer(modifier = Modifier.height(10.dp))
+
+          // Biometric login (mockable via Test Controls)
+          OutlinedButton(
+            onClick = {
+              if (viewModel.testControls.value.mockBiometricSuccess) {
+                viewModel.performLogin()
+              } else {
+                val activity = (ctx as? FragmentActivity)
+                if (activity != null && canAuthenticateBiometric(ctx)) {
+                  showBiometricPrompt(
+                    activity = activity,
+                    title = "Login to TG Bank",
+                    subtitle = "Use fingerprint or Face ID",
+                    onSuccess = { viewModel.performLogin() },
+                    onError = { msg -> Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
+                  )
+                } else {
+                  Toast.makeText(ctx, "Biometric sensor simulated - logging in", Toast.LENGTH_SHORT).show()
+                  viewModel.performLogin()
+                }
+              }
+            },
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(46.dp)
+              .testTag("login_biometric_button"),
+            shape = RoundedCornerShape(12.dp)
+          ) {
+            Icon(Icons.Default.Fingerprint, contentDescription = null, tint = BankNavyPrimary, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Login with Fingerprint / Face ID", fontWeight = FontWeight.SemiBold, color = BankNavyPrimary, fontSize = 13.sp)
+          }
+
+          Spacer(modifier = Modifier.height(10.dp))
 
           // Quick Fill Demo Credentials
           OutlinedButton(
@@ -312,37 +347,6 @@ fun LoginScreen(
       Spacer(modifier = Modifier.height(20.dp))
     }
   }
-
-  
-      // Biometric login (mockable via Test Controls)
-      Spacer(modifier = Modifier.height(8.dp))
-      OutlinedButton(
-        onClick = {
-          if (viewModel.testControls.value.mockBiometricSuccess) {
-            viewModel.performLogin()
-          } else {
-            val activity = (ctx as? FragmentActivity)
-            if (activity != null && canAuthenticateBiometric(ctx)) {
-              showBiometricPrompt(
-                activity = activity,
-                title = "Login to TG Bank",
-                subtitle = "Use fingerprint or Face ID",
-                onSuccess = { viewModel.performLogin() },
-                onError = { msg -> Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
-              )
-            } else {
-              Toast.makeText(ctx, "Biometric not available on this device", Toast.LENGTH_SHORT).show()
-            }
-          }
-        },
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(48.dp)
-          .testTag("login_biometric_button"),
-        shape = RoundedCornerShape(12.dp)
-      ) {
-        Text("Login with Fingerprint / Face ID", fontWeight = FontWeight.SemiBold)
-      }
 
   // Forgot PIN Dialog
   if (showForgotPinDialog) {

@@ -316,13 +316,37 @@ class BankRepository {
   val lastApiResponse: StateFlow<String?> = _lastApiResponse.asStateFlow()
 
   fun resetDemoData() {
-    _userProfile.value = INITIAL_USER
+    _userProfile.value = INITIAL_USER.copy(
+      kycStatus = "Incomplete",
+      usedCredit = 0.0,
+      availableCredit = 5000000.0,
+      nextPayment = 0.0,
+      balance = 24588338510.70
+    )
     _transactions.value = INITIAL_TRANSACTIONS
     _notifications.value = INITIAL_NOTIFICATIONS
-    _testControls.value = TestControlState()
+    _testControls.value = TestControlState(forceKycIncomplete = true, requirePaymentAuth = true)
     _beneficiaries.value = INITIAL_BENEFICIARIES
     _eliteCards.value = INITIAL_ELITE_CARDS
     _lastApiResponse.value = null
+  }
+
+  fun resetKycState() {
+    _userProfile.update { it.copy(kycStatus = "Incomplete") }
+    _testControls.update { it.copy(forceKycIncomplete = true) }
+    addNotification("KYC Reset", "KYC status reset to Incomplete. Verification required.")
+  }
+
+  fun resetCreditState() {
+    _userProfile.update {
+      it.copy(
+        usedCredit = 0.0,
+        availableCredit = it.creditLimit,
+        nextPayment = 0.0
+      )
+    }
+    _eliteCards.update { INITIAL_ELITE_CARDS }
+    addNotification("Credit Reset", "Credit utilization and dues reset to zero.")
   }
 
   /** Pushes/seeds the in-memory backend database so subsequent validations see consistent data. */

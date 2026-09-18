@@ -535,7 +535,20 @@ class BankViewModel(
     _txTypeFilter.value = TransactionType.ALL
     _txCreditsDebitsFilter.value = "All"
 
-    _userMessage.value = "Demo data restored: Balance $24,588,338,510.70"
+    _userMessage.value = "Full demo reset: Balance, KYC, Credit & Debit activities restored to factory state."
+  }
+
+  fun resetKycOnly() {
+    repository.resetKycState()
+    _kycStep.value = 1
+    _kycDocUploaded.value = false
+    _kycSelfieUploaded.value = false
+    _userMessage.value = "KYC status reset to Incomplete. Flow ready for verification."
+  }
+
+  fun resetCreditOnly() {
+    repository.resetCreditState()
+    _userMessage.value = "Credit card limits, loans, and utilization reset."
   }
 
   fun dismissUserMessage() {

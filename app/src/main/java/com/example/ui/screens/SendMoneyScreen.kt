@@ -62,6 +62,7 @@ import com.example.ui.components.DemoBadge
 import com.example.ui.components.MpinVerificationDialog
 import com.example.ui.components.OtpVerificationDialog
 import com.example.ui.components.PaymentAuthMethodSelector
+import com.example.ui.components.PaymentSecurityAuthDialog
 import com.example.ui.components.SlideToPay
 import com.example.ui.theme.BankBlueAccent
 import com.example.ui.theme.BankErrorRed
@@ -109,6 +110,19 @@ fun SendMoneyScreen(
 
   var saveAsBeneficiary by remember { mutableStateOf(false) }
   var railExpanded by remember { mutableStateOf(false) }
+  var showSecurityAuthDialog by remember { mutableStateOf(false) }
+
+  PaymentSecurityAuthDialog(
+    visible = showSecurityAuthDialog,
+    amount = amount.toDoubleOrNull() ?: 50000.0,
+    recipientOrPurpose = if (recipient.isNotEmpty()) recipient else "Wire Transfer Beneficiary",
+    onAuthorized = {
+      showSecurityAuthDialog = false
+      viewModel.onAuthVerified()
+      viewModel.confirmSendTransfer()
+    },
+    onDismiss = { showSecurityAuthDialog = false }
+  )
 
   OtpVerificationDialog(
     visible = showOtp,
@@ -375,40 +389,34 @@ fun SendMoneyScreen(
               onSelect = { viewModel.updatePaymentAuthMethod(it) }
             )
 
-              if (!authPassed && testControls.requirePaymentAuth) {
-              Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (!authPassed) {
               Button(
                 onClick = {
-                  // If biometric auth chosen and mocks are disabled, use system BiometricPrompt
-                  if (authMethod == PaymentAuthMethod.BIOMETRIC && !testControls.mockBiometricSuccess) {
-                    val activity = (ctx as? FragmentActivity)
-                    if (activity != null && canAuthenticateBiometric(ctx)) {
-                      showBiometricPrompt(
-                        activity = activity,
-                        title = "Authenticate to Authorize Payment",
-                        subtitle = authMethod.displayName,
-                        onSuccess = { viewModel.onAuthVerified() },
-                        onError = { msg -> Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
-                      )
-                    } else {
-                      // fallback to ViewModel's request path
-                      viewModel.requestPaymentAuth()
-                    }
-                  } else {
-                    viewModel.requestPaymentAuth()
-                  }
+                  showSecurityAuthDialog = true
                 },
-                modifier = Modifier.fillMaxWidth().height(46.dp).testTag("request_auth_button"),
-                colors = ButtonDefaults.buttonColors(containerColor = BankPurple),
+                modifier = Modifier.fillMaxWidth().height(48.dp).testTag("request_auth_button"),
+                colors = ButtonDefaults.buttonColors(containerColor = BankNavyPrimary),
                 shape = RoundedCornerShape(12.dp)
               ) {
-                Text("Verify ${authMethod.displayName}", fontWeight = FontWeight.Bold)
+                Text("Authorize Transfer (mPIN / OTP / Fingerprint)", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
               }
-            }
+            } else {
+              Surface(
+                color = Color(0xFFDCFCE7),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                  Icon(Icons.Default.CheckCircle, contentDescription = null, tint = BankSuccessGreen, modifier = Modifier.size(18.dp))
+                  Spacer(modifier = Modifier.width(8.dp))
+                  Text("Security Authentication Verified", color = Color(0xFF166534), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+              }
 
-            if (authPassed || !testControls.requirePaymentAuth) {
-              Spacer(modifier = Modifier.height(16.dp))
-              Text("Slide to confirm payment", fontSize = 12.sp, color = BankTextSecondary)
+              Spacer(modifier = Modifier.height(14.dp))
+              Text("Slide to execute transfer", fontSize = 12.sp, color = BankTextSecondary)
               Spacer(modifier = Modifier.height(8.dp))
               SlideToPay(
                 enabled = !isProcessing,

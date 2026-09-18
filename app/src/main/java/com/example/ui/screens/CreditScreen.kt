@@ -58,6 +58,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.components.DemoBadge
+import com.example.ui.components.PaymentSecurityAuthDialog
 import com.example.ui.theme.BankBlueAccent
 import com.example.ui.theme.BankNavyDark
 import com.example.ui.theme.BankNavyLight
@@ -92,7 +93,26 @@ fun CreditScreen(
   val authMethod by viewModel.paymentAuthMethod.collectAsState()
   val authPassed by viewModel.authPassed.collectAsState()
   var payRequested by remember { mutableStateOf(false) }
+  var showSecurityAuthDialog by remember { mutableStateOf(false) }
   val coroutineScope = rememberCoroutineScope()
+
+  PaymentSecurityAuthDialog(
+    visible = showSecurityAuthDialog,
+    amount = nextPaymentDue,
+    recipientOrPurpose = "Credit Card Bill Settlement",
+    onAuthorized = {
+      showSecurityAuthDialog = false
+      coroutineScope.launch {
+        val res = viewModel.payCreditBill(nextPaymentDue)
+        res.onSuccess {
+          paymentSuccessMessage = "Payment of $${String.format(Locale.US, "%,.2f", nextPaymentDue)} settled successfully!"
+        }.onFailure { err ->
+          Toast.makeText(context, err.message ?: "Payment failed", Toast.LENGTH_SHORT).show()
+        }
+      }
+    },
+    onDismiss = { showSecurityAuthDialog = false }
+  )
 
   Column(
     modifier = Modifier
@@ -281,41 +301,13 @@ fun CreditScreen(
 
           Button(
             onClick = {
-              if (testControls.requirePaymentAuth && !authPassed) {
-                payRequested = true
-                // Use biometric when selected and mock disabled
-                if (authMethod.displayName.contains("Biometric", ignoreCase = true) && !testControls.mockBiometricSuccess) {
-                  val activity = (context as? FragmentActivity)
-                  if (activity != null && canAuthenticateBiometric(context)) {
-                    showBiometricPrompt(
-                      activity = activity,
-                      title = "Authenticate to Pay",
-                      subtitle = authMethod.displayName,
-                      onSuccess = { viewModel.onAuthVerified() },
-                      onError = { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
-                    )
-                  } else {
-                    viewModel.requestPaymentAuth()
-                  }
-                } else {
-                  viewModel.requestPaymentAuth()
-                }
-              } else {
-                coroutineScope.launch {
-                  val res = viewModel.payCreditBill(nextPaymentDue)
-                  res.onSuccess {
-                    paymentSuccessMessage = "Payment of $${nextPaymentDue} settled successfully!"
-                  }.onFailure { err ->
-                    Toast.makeText(context, err.message ?: "Payment failed", Toast.LENGTH_SHORT).show()
-                  }
-                }
-              }
+              showSecurityAuthDialog = true
             },
             shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.buttonColors(containerColor = BankNavyPrimary),
             modifier = Modifier.testTag("credit_make_payment_button")
           ) {
-            Text("Pay Now", fontSize = 13.sp)
+            Text("Authorize & Pay", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
           }
         }
 

@@ -186,7 +186,7 @@ fun BankTopAppBar(
               text = title,
               fontSize = 18.sp,
               fontWeight = FontWeight.Bold,
-              color = BankTextPrimary
+              color = Color.White
             )
             Spacer(modifier = Modifier.width(8.dp))
             DemoBadge(onClick = onTestControlsClick)
@@ -195,7 +195,7 @@ fun BankTopAppBar(
             Text(
               text = subtitle,
               fontSize = 12.sp,
-              color = BankTextSecondary
+              color = Color(0xFFCBD5E1)
             )
           }
         }
@@ -858,3 +858,419 @@ fun PaymentAuthMethodSelector(
     }
   }
 }
+
+// ─── Unified Payment Security Auth Dialog ──────────────────────────────────────
+@Composable
+fun PaymentSecurityAuthDialog(
+  visible: Boolean,
+  amount: Double,
+  recipientOrPurpose: String,
+  accountInfo: String = "TG Bank • **** 4588",
+  initialMethod: PaymentAuthMethod = PaymentAuthMethod.MPIN,
+  onAuthorized: () -> Unit,
+  onDismiss: () -> Unit
+) {
+  if (!visible) return
+
+  var currentMethod by remember { mutableStateOf(initialMethod) }
+  var pinDigits by remember { mutableStateOf("") }
+  var otpInput by remember { mutableStateOf("") }
+  var errorMessage by remember { mutableStateOf<String?>(null) }
+  var isSuccess by remember { mutableStateOf(false) }
+  val context = androidx.compose.ui.platform.LocalContext.current
+
+  androidx.compose.ui.window.Dialog(
+    onDismissRequest = onDismiss,
+    properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+  ) {
+    Card(
+      modifier = Modifier
+        .fillMaxWidth(0.92f)
+        .testTag("payment_security_dialog"),
+      shape = RoundedCornerShape(24.dp),
+      colors = CardDefaults.cardColors(containerColor = Color.White),
+      elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+      ) {
+        // Security header
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+              modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFEFF6FF)),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "Security",
+                tint = BankBlueAccent,
+                modifier = Modifier.size(20.dp)
+              )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+              Text(
+                text = "Authorize Payment",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = BankTextPrimary
+              )
+              Text(
+                text = "Protected with Multi-Factor Security",
+                fontSize = 11.sp,
+                color = BankTextSecondary
+              )
+            }
+          }
+          DemoBadge()
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Amount and recipient summary badge
+        Surface(
+          color = Color(0xFFF8FAFC),
+          shape = RoundedCornerShape(16.dp),
+          border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Column(
+            modifier = Modifier.padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+          ) {
+            Text(
+              text = "Amount to Debit",
+              fontSize = 11.sp,
+              color = BankTextSecondary,
+              fontWeight = FontWeight.Medium
+            )
+            Text(
+              text = "$${String.format(Locale.US, "%,.2f", amount)}",
+              fontSize = 24.sp,
+              fontWeight = FontWeight.Black,
+              color = BankNavyDark,
+              modifier = Modifier.testTag("auth_dialog_amount")
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+              text = "To: $recipientOrPurpose",
+              fontSize = 12.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = BankTextPrimary,
+              maxLines = 1
+            )
+            Text(
+              text = "From: $accountInfo",
+              fontSize = 11.sp,
+              color = BankTextSecondary
+            )
+          }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Auth Method Selector Chips
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .testTag("auth_method_selector_row"),
+          horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+          FilterChip(
+            selected = currentMethod == PaymentAuthMethod.MPIN,
+            onClick = {
+              currentMethod = PaymentAuthMethod.MPIN
+              errorMessage = null
+            },
+            label = { Text("mPIN (1234)", fontSize = 11.sp) },
+            modifier = Modifier.testTag("auth_chip_mpin")
+          )
+          FilterChip(
+            selected = currentMethod == PaymentAuthMethod.BIOMETRIC,
+            onClick = {
+              currentMethod = PaymentAuthMethod.BIOMETRIC
+              errorMessage = null
+            },
+            label = { Text("Fingerprint", fontSize = 11.sp) },
+            modifier = Modifier.testTag("auth_chip_biometric")
+          )
+          FilterChip(
+            selected = currentMethod == PaymentAuthMethod.OTP,
+            onClick = {
+              currentMethod = PaymentAuthMethod.OTP
+              errorMessage = null
+            },
+            label = { Text("OTP (123456)", fontSize = 11.sp) },
+            modifier = Modifier.testTag("auth_chip_otp")
+          )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Content per method
+        when (currentMethod) {
+          PaymentAuthMethod.MPIN -> {
+            Text(
+              text = "Enter your 4-digit Security mPIN",
+              fontSize = 12.sp,
+              color = BankTextSecondary
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // PIN bubble indicators
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(14.dp),
+              modifier = Modifier.testTag("mpin_dots_row")
+            ) {
+              repeat(4) { idx ->
+                val isFilled = idx < pinDigits.length
+                Box(
+                  modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(if (isFilled) BankNavyDark else Color(0xFFE2E8F0))
+                    .testTag("mpin_dot_$idx")
+                )
+              }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Numeric keypad grid
+            Column(
+              verticalArrangement = Arrangement.spacedBy(8.dp),
+              horizontalAlignment = Alignment.CenterHorizontally,
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              val keypad = listOf(
+                listOf("1", "2", "3"),
+                listOf("4", "5", "6"),
+                listOf("7", "8", "9"),
+                listOf("C", "0", "⌫")
+              )
+              keypad.forEach { row ->
+                Row(
+                  horizontalArrangement = Arrangement.spacedBy(12.dp),
+                  modifier = Modifier.fillMaxWidth(),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  row.forEach { key ->
+                    Surface(
+                      modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable {
+                          when (key) {
+                            "C" -> {
+                              pinDigits = ""
+                              errorMessage = null
+                            }
+                            "⌫" -> {
+                              if (pinDigits.isNotEmpty()) {
+                                pinDigits = pinDigits.dropLast(1)
+                                errorMessage = null
+                              }
+                            }
+                            else -> {
+                              if (pinDigits.length < 4) {
+                                val next = pinDigits + key
+                                pinDigits = next
+                                if (next.length == 4) {
+                                  if (next == "1234") {
+                                    isSuccess = true
+                                    onAuthorized()
+                                  } else {
+                                    errorMessage = "Incorrect PIN. Demo PIN is 1234"
+                                    pinDigits = ""
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                        .testTag("keypad_btn_$key"),
+                      color = when (key) {
+                        "C", "⌫" -> Color(0xFFF1F5F9)
+                        else -> Color(0xFFF8FAFC)
+                      },
+                      shape = RoundedCornerShape(10.dp),
+                      border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                      Box(contentAlignment = Alignment.Center) {
+                        Text(
+                          text = key,
+                          fontSize = 18.sp,
+                          fontWeight = FontWeight.Bold,
+                          color = BankNavyDark
+                        )
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          PaymentAuthMethod.BIOMETRIC -> {
+            Column(
+              horizontalAlignment = Alignment.CenterHorizontally,
+              modifier = Modifier.padding(vertical = 10.dp)
+            ) {
+              Box(
+                modifier = Modifier
+                  .size(72.dp)
+                  .clip(CircleShape)
+                  .background(Color(0xFFEFF6FF))
+                  .clickable {
+                    isSuccess = true
+                    onAuthorized()
+                  }
+                  .testTag("biometric_touch_sensor"),
+                contentAlignment = Alignment.Center
+              ) {
+                Icon(
+                  imageVector = Icons.Default.CheckCircle,
+                  contentDescription = "Fingerprint Sensor",
+                  tint = BankNavyPrimary,
+                  modifier = Modifier.size(42.dp)
+                )
+              }
+              Spacer(modifier = Modifier.height(12.dp))
+              Text(
+                text = "Touch Fingerprint Sensor",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = BankNavyDark
+              )
+              Text(
+                text = "Place your registered finger on the sensor or click below to simulate instant match.",
+                fontSize = 11.sp,
+                color = BankTextSecondary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
+              )
+              Spacer(modifier = Modifier.height(16.dp))
+              Button(
+                onClick = {
+                  isSuccess = true
+                  onAuthorized()
+                },
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .height(46.dp)
+                  .testTag("biometric_verify_button"),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BankNavyPrimary)
+              ) {
+                Text("Simulate Fingerprint Match", color = Color.White, fontWeight = FontWeight.Bold)
+              }
+            }
+          }
+
+          PaymentAuthMethod.OTP -> {
+            Column(
+              horizontalAlignment = Alignment.CenterHorizontally,
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Text(
+                text = "One-Time Password sent to +1 (555) 019-4588",
+                fontSize = 12.sp,
+                color = BankTextSecondary
+              )
+              Spacer(modifier = Modifier.height(12.dp))
+              OutlinedTextField(
+                value = otpInput,
+                onValueChange = {
+                  if (it.length <= 6 && it.all { c -> c.isDigit() }) {
+                    otpInput = it
+                    errorMessage = null
+                    if (it == "123456") {
+                      isSuccess = true
+                      onAuthorized()
+                    }
+                  }
+                },
+                label = { Text("Enter 6-Digit OTP") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .testTag("otp_input_field"),
+                shape = RoundedCornerShape(12.dp)
+              )
+              Spacer(modifier = Modifier.height(10.dp))
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+              ) {
+                TextButton(
+                  onClick = {
+                    otpInput = "123456"
+                    isSuccess = true
+                    onAuthorized()
+                  },
+                  modifier = Modifier.testTag("otp_autofill_button")
+                ) {
+                  Text("Autofill Demo OTP (123456)", fontSize = 12.sp, color = BankBlueAccent)
+                }
+              }
+              Spacer(modifier = Modifier.height(6.dp))
+              Button(
+                onClick = {
+                  if (otpInput == "123456") {
+                    isSuccess = true
+                    onAuthorized()
+                  } else {
+                    errorMessage = "Invalid OTP. Use demo OTP: 123456"
+                  }
+                },
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .height(46.dp)
+                  .testTag("otp_confirm_button"),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BankNavyPrimary)
+              ) {
+                Text("Verify & Pay", color = Color.White, fontWeight = FontWeight.Bold)
+              }
+            }
+          }
+        }
+
+        if (errorMessage != null) {
+          Spacer(modifier = Modifier.height(10.dp))
+          Text(
+            text = errorMessage ?: "",
+            color = BankErrorRed,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.testTag("auth_error_text")
+          )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Cancel button
+        TextButton(
+          onClick = onDismiss,
+          modifier = Modifier.testTag("auth_cancel_button")
+        ) {
+          Text("Cancel", color = BankTextSecondary, fontSize = 13.sp)
+        }
+      }
+    }
+  }
+}
+

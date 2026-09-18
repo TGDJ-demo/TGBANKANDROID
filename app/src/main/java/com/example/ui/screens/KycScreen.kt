@@ -64,6 +64,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.camera.InAppFaceScanner
 import com.example.ui.components.DemoBadge
 import com.example.ui.theme.BankBlueAccent
 import com.example.ui.theme.BankNavyDark
@@ -85,17 +86,18 @@ fun KycScreen(
   val context = LocalContext.current
   val coroutineScope = rememberCoroutineScope()
   var selfieBitmap by remember { mutableStateOf<Bitmap?>(null) }
-  val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
-    if (bitmap != null) {
-      selfieBitmap = bitmap
-      coroutineScope.launch { viewModel.uploadDemoSelfie() }
-    }
-  }
+  var showFaceScanner by remember { mutableStateOf(false) }
 
-  val permissionLauncher = rememberLauncherForActivityResult(RequestPermission()) { granted: Boolean ->
-    if (granted) {
-      cameraLauncher.launch(null)
-    }
+  if (showFaceScanner) {
+    InAppFaceScanner(
+      onFaceCaptured = { bitmap ->
+        selfieBitmap = bitmap
+        coroutineScope.launch { viewModel.uploadDemoSelfie() }
+        showFaceScanner = false
+      },
+      onClose = { showFaceScanner = false }
+    )
+    return
   }
 
   var nameInput by remember { mutableStateOf(profile.name) }
@@ -388,23 +390,38 @@ fun KycScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                   onClick = {
-                    val hasCamera = context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
-                    if (!hasCamera) {
-                      // Fallback to demo upload
-                      viewModel.uploadDemoSelfie()
-                    } else {
-                      val permissionState = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                      if (permissionState == PackageManager.PERMISSION_GRANTED) {
-                        cameraLauncher.launch(null)
-                      } else {
-                        permissionLauncher.launch(Manifest.permission.CAMERA)
-                      }
-                    }
+                    showFaceScanner = true
                   },
-                  shape = RoundedCornerShape(8.dp),
-                  modifier = Modifier.testTag("kyc_capture_selfie_button")
+                  shape = RoundedCornerShape(10.dp),
+                  colors = ButtonDefaults.buttonColors(containerColor = BankNavyPrimary),
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .testTag("kyc_capture_selfie_button")
                 ) {
-                  Text(if (selfieUploaded) "Re-capture Demo Selfie" else "Capture Demo Selfie", fontSize = 12.sp)
+                  Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.White)
+                  Spacer(modifier = Modifier.width(8.dp))
+                  Text(
+                    text = if (selfieUploaded) "Re-scan Face with Real Camera" else "Scan Face with Real Phone Camera",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                  )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                  onClick = {
+                    viewModel.uploadDemoSelfie()
+                  },
+                  shape = RoundedCornerShape(10.dp),
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .height(42.dp)
+                    .testTag("kyc_simulate_selfie_button")
+                ) {
+                  Text("Use Instant Demo Selfie", fontSize = 12.sp, color = BankNavyDark, fontWeight = FontWeight.SemiBold)
                 }
               }
             }

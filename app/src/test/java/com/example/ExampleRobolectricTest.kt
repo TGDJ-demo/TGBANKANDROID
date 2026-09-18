@@ -11,10 +11,30 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Before
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class ExampleRobolectricTest {
+
+  private val testDispatcher = UnconfinedTestDispatcher()
+
+  @Before
+  fun setUp() {
+    Dispatchers.setMain(testDispatcher)
+  }
+
+  @After
+  fun tearDown() {
+    Dispatchers.resetMain()
+  }
 
   @Test
   fun `read string from context`() {
@@ -45,6 +65,10 @@ class ExampleRobolectricTest {
     assertTrue(reviewed)
 
     viewModel.confirmSendTransfer()
+    val startSend = System.currentTimeMillis()
+    while (viewModel.lastCreatedTx.value == null && viewModel.sendError.value == null && System.currentTimeMillis() - startSend < 5000) {
+      Thread.sleep(50)
+    }
     val tx = viewModel.lastCreatedTx.value
     assertNotNull(tx)
     assertEquals(500.0, tx?.amount ?: 0.0, 0.01)
@@ -75,7 +99,10 @@ class ExampleRobolectricTest {
     viewModel.updateUpiAmount("75.50")
     viewModel.updateUpiNote("Coffee purchase")
     viewModel.confirmUpiPayment()
-
+    val startUpi = System.currentTimeMillis()
+    while (viewModel.upiSuccessTx.value == null && viewModel.upiError.value == null && System.currentTimeMillis() - startUpi < 5000) {
+      Thread.sleep(50)
+    }
     val upiTx = viewModel.upiSuccessTx.value
     assertNotNull(upiTx)
     assertEquals(initialTxCount + 1, viewModel.transactions.value.size)

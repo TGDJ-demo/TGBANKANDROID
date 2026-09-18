@@ -284,8 +284,8 @@ fun ProfileScreen(
   if (showResetDialog) {
     AlertDialog(
       onDismissRequest = { showResetDialog = false },
-      title = { Text("Reset Demo Data?", fontWeight = FontWeight.Bold) },
-      text = { Text("This will restore the original demo balance ($24,588,338,510.70) and reset transactions and notifications.") },
+      title = { Text("Reset Full Demo State?", fontWeight = FontWeight.Bold) },
+      text = { Text("This will completely reset all demo activities: balance ($24,588,338,510.70), KYC verification status, cards, credit utilization, and transaction history back to initial state.") },
       confirmButton = {
         Button(
           onClick = {

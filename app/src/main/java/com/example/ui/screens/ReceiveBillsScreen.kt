@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.Transaction
 import com.example.ui.components.DemoBadge
+import com.example.ui.components.PaymentSecurityAuthDialog
 import com.example.ui.components.TGLogo
 import com.example.ui.theme.BankBlueAccent
 import com.example.ui.theme.BankNavyDark
@@ -263,6 +264,24 @@ fun PayBillsScreen(
   var billAccountNo by remember { mutableStateOf("991028") }
   var lastBillTx by remember { mutableStateOf<Transaction?>(null) }
   var errorMessage by remember { mutableStateOf<String?>(null) }
+  var showSecurityAuthDialog by remember { mutableStateOf(false) }
+
+  PaymentSecurityAuthDialog(
+    visible = showSecurityAuthDialog,
+    amount = billAmount.toDoubleOrNull() ?: 210.50,
+    recipientOrPurpose = "$selectedBiller (Acct #$billAccountNo)",
+    onAuthorized = {
+      showSecurityAuthDialog = false
+      val amt = billAmount.toDoubleOrNull() ?: 210.50
+      val res = viewModel.executeBillPayment(selectedBiller, amt, billAccountNo)
+      res.onSuccess { tx ->
+        lastBillTx = tx
+      }.onFailure { err ->
+        errorMessage = err.message ?: "Bill payment failed."
+      }
+    },
+    onDismiss = { showSecurityAuthDialog = false }
+  )
 
   val billers = listOf(
     BillerItem("City Power & Light Corp", "Electricity", 210.50, Icons.Default.ElectricBolt, Color(0xFFFEF3C7), Color(0xFFD97706)),
@@ -403,12 +422,8 @@ fun PayBillsScreen(
               errorMessage = "Please enter a valid amount."
               return@Button
             }
-            val res = viewModel.executeBillPayment(selectedBiller, amt, billAccountNo)
-            res.onSuccess { tx ->
-              lastBillTx = tx
-            }.onFailure { err ->
-              errorMessage = err.message ?: "Bill payment failed."
-            }
+            errorMessage = null
+            showSecurityAuthDialog = true
           },
           modifier = Modifier
             .fillMaxWidth()
@@ -417,7 +432,7 @@ fun PayBillsScreen(
           shape = RoundedCornerShape(12.dp),
           colors = ButtonDefaults.buttonColors(containerColor = BankNavyPrimary)
         ) {
-          Text("Pay Bill Now", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+          Text("Authorize & Pay Bill", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
         }
       }
     }
