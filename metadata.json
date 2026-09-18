@@ -1,0 +1,6 @@
+{
+  "name": "TG Bank",
+  "description": "TestGridBank demo banking application with simulated balances, UPI, transfers, credit, and KYC.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
