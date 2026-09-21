@@ -18,6 +18,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import com.example.ui.components.BankBottomNavigationBar
 import com.example.ui.components.BankTopAppBar
 import com.example.ui.screens.AddMoneyScreen
@@ -44,12 +47,19 @@ import com.example.viewmodel.Screen
 class MainActivity : FragmentActivity() {
   private val viewModel: BankViewModel by viewModels()
 
+  @OptIn(ExperimentalComposeUiApi::class)
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
     setContent {
       MyApplicationTheme {
-        MainAppContent(viewModel = viewModel)
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .semantics { testTagsAsResourceId = true }
+        ) {
+          MainAppContent(viewModel = viewModel)
+        }
       }
     }
   }

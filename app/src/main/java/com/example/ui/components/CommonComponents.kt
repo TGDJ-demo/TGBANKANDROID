@@ -55,7 +55,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -860,6 +863,7 @@ fun PaymentAuthMethodSelector(
 }
 
 // ─── Unified Payment Security Auth Dialog ──────────────────────────────────────
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun PaymentSecurityAuthDialog(
   visible: Boolean,
@@ -886,6 +890,7 @@ fun PaymentSecurityAuthDialog(
     Card(
       modifier = Modifier
         .fillMaxWidth(0.92f)
+        .semantics { testTagsAsResourceId = true }
         .testTag("payment_security_dialog"),
       shape = RoundedCornerShape(24.dp),
       colors = CardDefaults.cardColors(containerColor = Color.White),

@@ -505,7 +505,15 @@ class BankViewModel(
 
   fun resetDemoData() {
     repository.resetDemoData()
+    // Reset screen stack back to Login screen
+    _screenStack.value = listOf(Screen.Login)
+    _selectedTab.value = BottomTab.HOME
+
     // Reset UI / flow state held in ViewModel as well
+    _loginUsername.value = "Sanjay G"
+    _loginPin.value = "1234"
+    _loginError.value = null
+
     _sendStep.value = 1
     _sendRecipient.value = ""
     _sendAccount.value = ""
